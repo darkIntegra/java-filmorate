@@ -3,6 +3,8 @@ package ru.yandex.practicum.filmorate.model;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 
@@ -11,17 +13,20 @@ import java.time.LocalDate;
 public class User {
     private Long id;
 
-    @NotBlank(message = "Email не может быть пустым.")
-    @Email(message = "некорректный формат email.")
+    @NotBlank(groups = OnCreate.class, message = "Email не может быть пустым.")
+    @Email(groups = {OnCreate.class, OnUpdate.class}, message = "некорректный формат email.")
     private String email;
 
-    @NotBlank(message = "Поле с логином не должно быть пустым.")
-    @Pattern(regexp = "^\\S+$", message = "Логин не должен содержать пробелы.")
+    @Pattern(
+            regexp = "^\\S+$",
+            groups = {OnCreate.class}, // Применяется только при создании
+            message = "Логин не должен быть пустым и не должен содержать пробелы."
+    )
     private String login;
 
     private String name;
 
-    @NotNull(message = "Дата рождения не может быть null")
-    @Past(message = "Дата рождения не может быть в будущем.")
+    @NotNull(groups = OnCreate.class, message = "Дата рождения не может быть null")
+    @Past(groups = {OnCreate.class, OnUpdate.class}, message = "Дата рождения не может быть в будущем.")
     private LocalDate birthday;
 }

@@ -3,6 +3,8 @@ package ru.yandex.practicum.filmorate.model;
 import jakarta.validation.constraints.*;
 import lombok.Data;
 import lombok.extern.slf4j.Slf4j;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
 
@@ -11,20 +13,21 @@ import java.time.LocalDate;
 public class Film {
     private Long id;
 
-    @NotBlank(message = "Имя не должно быть пустым")
+    @NotBlank(groups = {OnCreate.class, OnUpdate.class}, message = "Имя не должно быть пустым")
     private String name;
 
-    @Size(max = 200, message = "Размер не должен превышать 200 символов")
+    @Size(max = 200, groups = {OnCreate.class, OnUpdate.class}, message = "Размер не должен превышать 200 символов")
     private String description;
 
-    @NotNull(message = "Дата релиза не может быть null")
+    @NotNull(groups = OnCreate.class, message = "Дата релиза не может быть null")
     private LocalDate releaseDate;
 
-    @NotNull(message = "Продолжительность фильма не может быть null")
-    @PositiveOrZero(message = "Продолжительность фильма должна быть положительным числом")
+    @NotNull(groups = OnCreate.class, message = "Продолжительность фильма не может быть null")
+    @Min(value = 1, groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть положительной")
     private Long duration;
 
-    @AssertTrue(message = "Дата релиза не может быть раньше 28 декабря 1895 года")
+    @AssertTrue(groups = {OnCreate.class, OnUpdate.class}, message = "Дата релиза не может быть раньше 28 декабря " +
+            "1895 года")
     public boolean isReleaseFateValid() {
         return !releaseDate.isBefore(LocalDate.of(1895, 12, 28));
     }

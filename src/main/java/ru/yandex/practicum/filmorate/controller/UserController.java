@@ -1,12 +1,14 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.Valid;
-import jakarta.validation.constraints.NotNull;
+import jakarta.validation.groups.Default;
+import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.yandex.practicum.filmorate.exception.ValidationException;
 import ru.yandex.practicum.filmorate.model.User;
+import ru.yandex.practicum.filmorate.validation.OnCreate;
+import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.util.*;
 
@@ -25,10 +27,10 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody @Valid User user) {
+    public User createUser(@RequestBody @Validated({OnCreate.class, Default.class}) User user) {
         user.setId(getNextId());
+        // Если имя не указано, используем логин
         if (user.getName() == null || user.getName().isBlank()) {
-            log.info("У пользователя с ID={} не указано имя", user.getId());
             user.setName(user.getLogin());
         }
         users.put(user.getId(), user);
@@ -37,12 +39,13 @@ public class UserController {
     }
 
     @PutMapping
-    public User updateUser(@RequestBody @NotNull @Valid User newUser) {
+    public User updateUser(@RequestBody @Validated({OnUpdate.class, Default.class}) User newUser) {
         if (!users.containsKey(newUser.getId())) {
             throw new ValidationException("Пользователь с ID " + newUser.getId() + " не найден.");
         }
         User oldUser = users.get(newUser.getId());
 
+        // Обновляем только те поля, которые были переданы и прошли валидацию
         if (newUser.getEmail() != null) {
             oldUser.setEmail(newUser.getEmail());
         }
@@ -52,11 +55,10 @@ public class UserController {
         if (newUser.getBirthday() != null) {
             oldUser.setBirthday(newUser.getBirthday());
         }
-        if (newUser.getName().isBlank()) {
-            oldUser.setName(newUser.getLogin());
-        } else {
-            oldUser.setName(newUser.getName());
-        }
+
+        // Если имя пустое, используем логин
+        oldUser.setName((newUser.getName() == null || newUser.getName().isBlank()) ? newUser.getLogin() :
+                newUser.getName());
 
         log.info("Обновлен пользователь: {}", oldUser.getLogin());
         return oldUser;
