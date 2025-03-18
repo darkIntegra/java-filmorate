@@ -23,7 +23,7 @@ public class Film {
     private LocalDate releaseDate;
 
     @NotNull(groups = OnCreate.class, message = "Продолжительность фильма не может быть null")
-    @Min(value = 1, groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть положительной")
+    @Positive(groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть положительной")
     private Long duration;
 
     @AssertTrue(groups = {OnCreate.class, OnUpdate.class}, message = "Дата релиза не может быть раньше 28 декабря " +
