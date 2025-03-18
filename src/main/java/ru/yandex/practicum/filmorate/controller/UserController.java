@@ -1,6 +1,5 @@
 package ru.yandex.practicum.filmorate.controller;
 
-import jakarta.validation.groups.Default;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
@@ -26,7 +25,7 @@ public class UserController {
     }
 
     @PostMapping
-    public User createUser(@RequestBody @Validated({OnCreate.class, Default.class}) User user) {
+    public User createUser(@RequestBody @Validated(OnCreate.class) User user) {
         user.setId(getNextId());
         // Если имя не указано, используем логин
         if (user.getName() == null || user.getName().isBlank()) {
@@ -38,7 +37,7 @@ public class UserController {
     }
 
     @PutMapping
-    public User updateUser(@RequestBody @Validated({OnUpdate.class, Default.class}) User newUser) {
+    public User updateUser(@RequestBody @Validated(OnUpdate.class) User newUser) {
         if (!users.containsKey(newUser.getId())) {
             throw new ValidationException("Пользователь с ID " + newUser.getId() + " не найден.");
         }

@@ -17,6 +17,7 @@ public class User {
     @Email(groups = {OnCreate.class, OnUpdate.class}, message = "некорректный формат email.")
     private String email;
 
+    @NotNull(groups = OnCreate.class, message = "Логин не может быть null.")
     @Pattern(
             regexp = "^\\S+$",
             groups = {OnCreate.class}, // Применяется только при создании

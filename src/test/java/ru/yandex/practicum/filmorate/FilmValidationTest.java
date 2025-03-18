@@ -63,4 +63,74 @@ public class FilmValidationTest {
         assertEquals(1, violations.size());
         assertTrue(violations.iterator().next().getMessage().contains("Продолжительность фильма должна быть положительной"));
     }
+
+    @Test
+    public void testZeroDurationOnCreate() {
+        Film film = new Film();
+        film.setName("Film Name");
+        film.setDescription("Description");
+        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setDuration(0L); // Нулевая продолжительность
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, OnCreate.class);
+        assertFalse(violations.isEmpty(), "Должна быть ошибка валидации для нулевой продолжительности");
+        assertEquals(1, violations.size());
+        assertTrue(violations.iterator().next().getMessage().contains("Продолжительность фильма должна быть положительной"));
+    }
+
+    @Test
+    public void testEmptyNameOnCreate() {
+        Film film = new Film();
+        film.setName(""); // Пустое имя
+        film.setDescription("Description");
+        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setDuration(100L);
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, OnCreate.class);
+        assertFalse(violations.isEmpty(), "Должна быть ошибка валидации для пустого имени");
+        assertEquals(1, violations.size());
+        assertTrue(violations.iterator().next().getMessage().contains("Имя не должно быть пустым"));
+    }
+
+    @Test
+    public void testLongDescriptionOnCreate() {
+        Film film = new Film();
+        film.setName("Film Name");
+        film.setDescription("a".repeat(201)); // Описание длиной 201 символ
+        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setDuration(100L);
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, OnCreate.class);
+        assertFalse(violations.isEmpty(), "Должна быть ошибка валидации для слишком длинного описания");
+        assertEquals(1, violations.size());
+        assertTrue(violations.iterator().next().getMessage().contains("Размер не должен превышать 200 символов"));
+    }
+
+    @Test
+    public void testNullReleaseDateOnCreate() {
+        Film film = new Film();
+        film.setName("Film Name");
+        film.setDescription("Description");
+        film.setReleaseDate(null); // Null дата релиза
+        film.setDuration(100L);
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, OnCreate.class);
+        assertFalse(violations.isEmpty(), "Должна быть ошибка валидации для null даты релиза");
+        assertEquals(1, violations.size());
+        assertTrue(violations.iterator().next().getMessage().contains("Дата релиза не может быть null"));
+    }
+
+    @Test
+    public void testNullDurationOnCreate() {
+        Film film = new Film();
+        film.setName("Film Name");
+        film.setDescription("Description");
+        film.setReleaseDate(LocalDate.of(2000, 1, 1));
+        film.setDuration(null); // Null продолжительность
+
+        Set<ConstraintViolation<Film>> violations = validator.validate(film, OnCreate.class);
+        assertFalse(violations.isEmpty(), "Должна быть ошибка валидации для null продолжительности");
+        assertEquals(1, violations.size());
+        assertTrue(violations.iterator().next().getMessage().contains("Продолжительность фильма не может быть null"));
+    }
 }
