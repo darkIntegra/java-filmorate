@@ -10,7 +10,6 @@ import java.util.*;
 @Service
 public class UserService {
     private final UserStorage userStorage;
-    private final Map<Long, Set<Long>> friends = new HashMap<>();
 
     @Autowired
     public UserService(UserStorage userStorage) {
@@ -33,75 +32,41 @@ public class UserService {
         return userStorage.getUserById(id);
     }
 
-    /**
-     * Добавляет двух пользователей в друзья друг другу.
-     * Логика работы:
-     * 1. Используется Map<Long, Set<Long>> friends, где ключ — это ID пользователя,
-     * а значение — множество ID его друзей.
-     * 2. Метод computeIfAbsent проверяет, есть ли уже запись для userId в Map.
-     * Если записи нет, создаётся новое пустое множество.
-     * 3. В множество друзей пользователя с userId добавляется friendId.
-     * 4. Аналогично обновляется множество друзей пользователя с friendId.
-     * 5. Таким образом, дружба становится двусторонней.
-     */
+    // Добавляет двух пользователей в друзья друг другу.
     public void addFriend(Long userId, Long friendId) {
         // Проверяем существование обоих пользователей
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
-        userStorage.getUserById(friendId); // Выбросит исключение, если пользователь не найден
-
-        friends.computeIfAbsent(userId, k -> new HashSet<>()).add(friendId);
-        friends.computeIfAbsent(friendId, k -> new HashSet<>()).add(userId);
+        userStorage.getUserById(friendId);
+        userStorage.addFriend(userId, friendId);
     }
 
-    /**
-     * Удаляет двух пользователей из списка друзей друг друга.
-     * Логика работы:
-     * 1. Используется Map<Long, Set<Long>> friends, где ключ — это ID пользователя,
-     * а значение — множество ID его друзей.
-     * 2. Метод getOrDefault возвращает множество друзей для userId.
-     * Если записи нет, возвращается пустое множество.
-     * 3. Из множества друзей пользователя с userId удаляется friendId.
-     * 4. Аналогично обновляется множество друзей пользователя с friendId.
-     * 5. Таким образом, дружба удаляется с обеих сторон.
-     */
+    //Удаляет двух пользователей из списка друзей друг друга.
     public void removeFriend(Long userId, Long friendId) {
         // Проверяем существование обоих пользователей
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
         userStorage.getUserById(friendId);
-
-        friends.getOrDefault(userId, Collections.emptySet()).remove(friendId);
-        friends.getOrDefault(friendId, Collections.emptySet()).remove(userId);
+        userStorage.removeFriend(userId, friendId);
     }
 
+    // Возвращает список друзей пользователя
     public List<User> getFriends(Long userId) {
         // Проверяем существование пользователя
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
 
-        // Возвращаем список друзей
-        return friends.getOrDefault(userId, Collections.emptySet()).stream()
+        return userStorage.getFriends(userId).stream()
                 .map(userStorage::getUserById)
                 .toList();
     }
 
-    /**
-     * Возвращает список общих друзей двух пользователей.
-     * Логика работы:
-     * 1. Используется Map<Long, Set<Long>> friends, где ключ — это ID пользователя,
-     * а значение — множество ID его друзей.
-     * 2. Для каждого пользователя (userId и otherUserId) получаем множество его друзей
-     * через friends.getOrDefault(id, Collections.emptySet()).
-     * 3. Находим пересечение множеств друзей двух пользователей с помощью метода filter.
-     * 4. Для каждого общего друга (ID) получаем объект User через userStorage.getUserById.
-     * 5. Преобразуем Stream в List и возвращаем результат.
-     */
+    // Возвращает список общих друзей двух пользователей.
     public List<User> getCommonFriends(Long userId, Long otherUserId) {
         // Проверяем существование обоих пользователей
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
         userStorage.getUserById(otherUserId);
 
         // Находим пересечение множеств друзей
-        Set<Long> userFriends = friends.getOrDefault(userId, Collections.emptySet());
-        Set<Long> otherUserFriends = friends.getOrDefault(otherUserId, Collections.emptySet());
+        Set<Long> userFriends = userStorage.getFriends(userId);
+        Set<Long> otherUserFriends = userStorage.getFriends(otherUserId);
 
         return userFriends.stream()
                 .filter(otherUserFriends::contains)

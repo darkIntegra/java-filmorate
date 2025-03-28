@@ -13,7 +13,6 @@ import java.util.stream.Collectors;
 public class FilmService {
     private final FilmStorage filmStorage;
     private final UserStorage userStorage;
-    private final Map<Long, Set<Long>> likes = new HashMap<>();
 
     @Autowired
     public FilmService(FilmStorage filmStorage, UserStorage userStorage) {
@@ -37,53 +36,27 @@ public class FilmService {
         return filmStorage.updateFilm(film);
     }
 
-    /**
-     * Добавляет лайк фильму от пользователя.
-     * Логика работы:
-     * 1. Используется Map<Long, Set<Long>> likes, где ключ — это ID фильма,
-     * а значение — множество ID пользователей, поставивших лайк.
-     * 2. Метод getOrDefault возвращает множество лайков для фильма с filmId.
-     * Если такого фильма нет в Map, возвращается пустое множество.
-     * 3. В множество добавляется ID пользователя (userId), что означает,
-     * что пользователь поставил лайк фильму.
-     */
+    // Добавляет лайк фильму от пользователя.
     public void addLike(Long filmId, Long userId) {
-        // Проверяем существование фильма
+        // Проверяем существование фильма и пользователя
         filmStorage.getFilmById(filmId); // Выбросит исключение, если фильм не найден
-
-        // Проверяем существование пользователя
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
-
-        // Добавляем лайк
-        likes.computeIfAbsent(filmId, k -> new HashSet<>()).add(userId);
+        filmStorage.addLike(filmId, userId);
     }
 
+    // Удаляет лайк у фильма.
     public void removeLike(Long filmId, Long userId) {
-        // Проверяем существование фильма
+        // Проверяем существование фильма и пользователя
         filmStorage.getFilmById(filmId); // Выбросит исключение, если фильм не найден
-
-        // Проверяем существование пользователя
         userStorage.getUserById(userId); // Выбросит исключение, если пользователь не найден
-
-        // Удаляем лайк
-        likes.getOrDefault(filmId, Collections.emptySet()).remove(userId);
+        filmStorage.removeLike(filmId, userId);
     }
 
-    /**
-     * Возвращает список наиболее популярных фильмов на основе количества лайков.
-     * Логика работы:
-     * 1. Получаем все фильмы из хранилища через filmStorage.getAllFilms().
-     * 2. Сортируем фильмы по количеству лайков (в порядке убывания):
-     * - Для каждого фильма получаем множество лайков через likes.getOrDefault(f.getId(), Collections.emptySet()).
-     * - Размер множества лайков определяет популярность фильма.
-     * 3. Ограничиваем результат до указанного количества фильмов (count).
-     * 4. Преобразуем Stream в List и возвращаем результат.
-     */
+    // Возвращает список наиболее популярных фильмов на основе количества лайков.
     public List<Film> getMostPopularFilms(int count) {
         return filmStorage.getAllFilms().stream()
-                .sorted(Comparator.comparingInt(f -> -likes.getOrDefault(f.getId(),
-                        Collections.emptySet()).size()))
+                .sorted(Comparator.comparingInt(f -> -filmStorage.getLikes(f.getId()).size()))
                 .limit(count)
-                .collect(Collectors.toList());
+                .toList();
     }
 }
