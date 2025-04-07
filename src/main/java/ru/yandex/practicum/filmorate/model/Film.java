@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @Slf4j
@@ -33,4 +34,5 @@ public class Film {
         return releaseDate == null || !releaseDate.isBefore(LocalDate.of(1895, 12, 28));
     }
 
+    private Set<Genre> genres;
 }

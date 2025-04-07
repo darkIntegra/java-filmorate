@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.validation.OnCreate;
 import ru.yandex.practicum.filmorate.validation.OnUpdate;
 
 import java.time.LocalDate;
+import java.util.Set;
 
 @Data
 @Slf4j
@@ -30,4 +31,6 @@ public class User {
     @NotNull(groups = OnCreate.class, message = "Дата рождения не может быть null")
     @Past(groups = {OnCreate.class, OnUpdate.class}, message = "Дата рождения не может быть в будущем.")
     private LocalDate birthday;
+
+    private Set<Friendship> friendships;
 }
