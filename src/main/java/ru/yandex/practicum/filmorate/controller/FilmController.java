@@ -36,14 +36,14 @@ public class FilmController {
 
     // Добавление нового фильма
     @PostMapping
-    public Film addFilm(@RequestBody @Validated(OnCreate.class) Film film) {
+    public Long addFilm(@RequestBody @Validated(OnCreate.class)@Valid Film film) {
         log.info("Добавлен новый фильм: {}", film.getName());
         return filmService.addFilm(film);
     }
 
     // Обновление фильма
     @PutMapping
-    public Film updateFilm(@RequestBody @Validated(OnUpdate.class) @Valid Film film) {
+    public Film updateFilm(@RequestBody @Validated(OnUpdate.class)@Valid Film film) {
         log.info("Обновлен фильм с ID: {}", film.getId());
         return filmService.updateFilm(film);
     }
