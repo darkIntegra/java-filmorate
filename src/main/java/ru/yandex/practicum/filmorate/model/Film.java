@@ -18,6 +18,9 @@ import java.util.List;
 @AllArgsConstructor
 @Slf4j
 public class Film {
+    private Rating mpa; // Объект рейтинга
+    private List<Genre> genres; // Список жанров
+
     @NotNull(groups = OnUpdate.class, message = "ID не может быть null при обновлении")
     private Long id;
 
@@ -45,4 +48,5 @@ public class Film {
     public boolean isReleaseDateValid() {
         return releaseDate == null || !releaseDate.isBefore(LocalDate.of(1895, 12, 28));
     }
+
 }

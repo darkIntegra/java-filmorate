@@ -19,9 +19,9 @@ public class RatingDao {
         this.jdbcTemplate = jdbcTemplate;
     }
 
-    // Получение всех рейтингов
+    // Получение всех рейтингов с сортировкой по ID
     public List<Rating> getAllRatings() {
-        String sql = "SELECT * FROM ratings";
+        String sql = "SELECT * FROM ratings ORDER BY id ASC";
         return jdbcTemplate.query(sql, this::mapRowToRating);
     }
 

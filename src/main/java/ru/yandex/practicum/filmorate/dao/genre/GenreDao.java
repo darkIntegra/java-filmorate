@@ -21,7 +21,7 @@ public class GenreDao {
 
     // Получение всех жанров
     public List<Genre> getAllGenres() {
-        String sql = "SELECT * FROM genres";
+        String sql = "SELECT * FROM genres ORDER BY id ASC";
         return jdbcTemplate.query(sql, this::mapRowToGenre);
     }
 

@@ -11,6 +11,24 @@ import java.util.stream.Collectors;
 @RestControllerAdvice
 public class ErrorHandler {
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleIllegalArgumentException(IllegalArgumentException e) {
+        return new ErrorResponse("Ошибка валидации", e.getMessage());
+    }
+
+    @ExceptionHandler(FriendshipNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleFriendshipNotFoundException(FriendshipNotFoundException e) {
+        return new ErrorResponse("Дружба не найдена", e.getMessage());
+    }
+
+    @ExceptionHandler(FilmNotFoundException.class)
+    @ResponseStatus(HttpStatus.NOT_FOUND)
+    public ErrorResponse handleFilmNotFoundException(FilmNotFoundException e) {
+        return new ErrorResponse("Фильм не найден", e.getMessage());
+    }
+
     // Обработка ошибок валидации (например, @NotBlank, @Email, @Past).
     @ExceptionHandler(MethodArgumentNotValidException.class)
     @ResponseStatus(HttpStatus.BAD_REQUEST)
@@ -29,10 +47,10 @@ public class ErrorHandler {
     }
 
     // Обработка ошибок, связанных с отсутствием объекта (например, IllegalArgumentException).
-    @ExceptionHandler(IllegalArgumentException.class)
+    @ExceptionHandler(UserNotFoundException.class)
     @ResponseStatus(HttpStatus.NOT_FOUND)
-    public ErrorResponse handleNotFoundException(IllegalArgumentException e) {
-        return new ErrorResponse("Объект не найден", e.getMessage());
+    public ErrorResponse handleUserNotFoundException(UserNotFoundException e) {
+        return new ErrorResponse("Пользователь не найден", e.getMessage());
     }
 
     // Обработка всех остальных исключений.

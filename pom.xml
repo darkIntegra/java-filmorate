@@ -142,6 +142,14 @@
 
 	<!-- Профили для работы с H2 в разных режимах -->
 	<profiles>
+		<!-- Профиль для локального запуска (H2 на файловой системе) -->
+		<profile>
+			<id>local</id>
+			<properties>
+				<spring.profiles.active>local</spring.profiles.active>
+			</properties>
+		</profile>
+
 		<!-- Профиль для тестов (H2 в памяти) -->
 		<profile>
 			<id>test</id>
@@ -150,14 +158,6 @@
 			</activation>
 			<properties>
 				<spring.profiles.active>test</spring.profiles.active>
-			</properties>
-		</profile>
-
-		<!-- Профиль для локального запуска (H2 на файловой системе) -->
-		<profile>
-			<id>local</id>
-			<properties>
-				<spring.profiles.active>local</spring.profiles.active>
 			</properties>
 		</profile>
 	</profiles>

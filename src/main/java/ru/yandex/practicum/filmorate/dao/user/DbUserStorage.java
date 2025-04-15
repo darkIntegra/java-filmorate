@@ -2,6 +2,7 @@ package ru.yandex.practicum.filmorate.dao.user;
 
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
+import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
@@ -31,7 +32,7 @@ public class DbUserStorage implements UserStorage {
 
     @Override
     public User getUserById(Long id) {
-        return userDao.getUserById(id);
+        return userDao.getUserById(id); // уже кидает UserNotFoundException
     }
 
     @Override
@@ -41,43 +42,46 @@ public class DbUserStorage implements UserStorage {
 
     @Override
     public void deleteUser(Long userId) {
-        userDao.deleteUser(userId);
+        userDao.deleteUser(userId); // внутри уже проверка на существование
     }
 
     @Override
     public void addFriend(Long userId, Long friendId) {
-        if (!userDao.userExists(userId) || !userDao.userExists(friendId)) {
-            throw new IllegalArgumentException("Один из пользователей не существует.");
-        }
-        userDao.addFriend(userId, friendId);
+        userDao.addFriend(userId, friendId); // внутренняя валидация есть
     }
 
     @Override
     public void removeFriend(Long userId, Long friendId) {
-        if (!userDao.userExists(userId) || !userDao.userExists(friendId)) {
-            throw new IllegalArgumentException("Один из пользователей не существует.");
-        }
-        userDao.removeFriend(userId, friendId);
+        userDao.removeFriend(userId, friendId); // с проверкой на наличие дружбы
     }
 
     @Override
     public List<User> getFriends(Long userId) {
         if (!userDao.userExists(userId)) {
-            throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не существует.");
         }
-        Set<Long> friendIds = userDao.getFriends(userId);
-        return friendIds.stream()
-                .map(this::getUserById)
-                .collect(Collectors.toList());
+        return userDao.getFriends(userId);
     }
 
     @Override
     public List<User> getCommonFriends(Long userId, Long otherUserId) {
-        Set<Long> userFriends = userDao.getFriends(userId);
-        Set<Long> otherUserFriends = userDao.getFriends(otherUserId);
+        if (!userDao.userExists(userId)) {
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не существует.");
+        }
+        if (!userDao.userExists(otherUserId)) {
+            throw new UserNotFoundException("Пользователь с ID " + otherUserId + " не существует.");
+        }
+
+        Set<Long> userFriends = userDao.getFriends(userId).stream()
+                .map(User::getId)
+                .collect(Collectors.toSet());
+        Set<Long> otherUserFriends = userDao.getFriends(otherUserId).stream()
+                .map(User::getId)
+                .collect(Collectors.toSet());
+
         return userFriends.stream()
                 .filter(otherUserFriends::contains)
-                .map(this::getUserById)
+                .map(userDao::getUserById)
                 .collect(Collectors.toList());
     }
 }

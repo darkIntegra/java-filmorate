@@ -1,5 +1,6 @@
 package ru.yandex.practicum.filmorate.dao.user;
 
+import jakarta.validation.ValidationException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataAccessException;
@@ -8,6 +9,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+
 import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
@@ -15,35 +17,22 @@ import java.sql.*;
 import java.time.LocalDate;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Repository
 public class UserDao {
     private static final Logger log = LoggerFactory.getLogger(UserDao.class);
-
-    public final JdbcTemplate jdbcTemplate;
+    private final JdbcTemplate jdbcTemplate;
 
     public UserDao(JdbcTemplate jdbcTemplate) {
         this.jdbcTemplate = jdbcTemplate;
     }
 
     public Long createUser(User user) {
-        // Валидация входных данных
-        if (user.getEmail() == null || user.getEmail().isEmpty()) {
-            throw new IllegalArgumentException("Email не может быть пустым.");
-        }
-        if (user.getLogin() == null || user.getLogin().isEmpty()) {
-            throw new IllegalArgumentException("Login не может быть пустым.");
-        }
-        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("Дата рождения не может быть в будущем.");
-        }
-        // SQL-запрос
+        validateUser(user, false);
+
         String sql = "INSERT INTO users (email, login, name, birthday) VALUES (?, ?, ?, ?)";
-        // Логирование
-        log.debug("Создание пользователя: email={}, login={}", user.getEmail(), user.getLogin());
-        // Выполнение запроса и получение сгенерированного ID
         KeyHolder keyHolder = new GeneratedKeyHolder();
+
         try {
             jdbcTemplate.update(connection -> {
                 PreparedStatement ps = connection.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
@@ -57,48 +46,29 @@ public class UserDao {
             if (keyHolder.getKey() == null) {
                 throw new RuntimeException("Не удалось получить сгенерированный ID пользователя.");
             }
+
             return keyHolder.getKey().longValue();
         } catch (DataAccessException e) {
-            log.error("Ошибка при создании пользователя: email={}, login={}", user.getEmail(), user.getLogin(), e);
+            log.error("Ошибка при создании пользователя: {}", user, e);
             throw new RuntimeException("Не удалось создать пользователя", e);
         }
     }
 
     public void updateUser(User user) {
-        // Валидация входных данных
-        if (user.getId() == null) {
-            throw new IllegalArgumentException("ID пользователя не может быть null.");
-        }
-        if (user.getEmail() == null || user.getEmail().isEmpty()) {
-            throw new IllegalArgumentException("Email не может быть пустым.");
-        }
-        if (user.getLogin() == null || user.getLogin().isEmpty()) {
-            throw new IllegalArgumentException("Login не может быть пустым.");
-        }
-        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
-            throw new IllegalArgumentException("Дата рождения не может быть в будущем.");
-        }
-        // Проверка существования пользователя
+        validateUser(user, true);
+
         if (!userExists(user.getId())) {
-            log.warn("Попытка обновить несуществующего пользователя с ID: {}", user.getId());
-            throw new IllegalArgumentException("Пользователь с ID " + user.getId() + " не существует.");
+            throw new UserNotFoundException("Пользователь с ID " + user.getId() + " не найден.");
         }
-        // SQL-запрос
+
         String sql = "UPDATE users SET email = ?, login = ?, name = ?, birthday = ? WHERE id = ?";
-        // Логирование
-        log.debug("Обновление пользователя с ID: {}", user.getId());
-        // Выполнение запроса
         try {
-            int rowsAffected = jdbcTemplate.update(sql,
+            jdbcTemplate.update(sql,
                     user.getEmail(),
                     user.getLogin(),
                     user.getName(),
                     user.getBirthday() != null ? Date.valueOf(user.getBirthday()) : null,
                     user.getId());
-            if (rowsAffected == 0) {
-                log.warn("Пользователь с ID {} не найден", user.getId());
-                throw new IllegalArgumentException("Пользователь с ID " + user.getId() + " не существует.");
-            }
         } catch (DataAccessException e) {
             log.error("Ошибка при обновлении пользователя с ID {}", user.getId(), e);
             throw new RuntimeException("Не удалось обновить пользователя", e);
@@ -107,24 +77,20 @@ public class UserDao {
 
     public User getUserById(Long id) {
         if (id == null) {
-            throw new IllegalArgumentException("ID пользователя не может быть null.");
+            throw new ValidationException("ID пользователя не может быть null.");
         }
+
         String sql = "SELECT * FROM users WHERE id = ?";
-        log.debug("Выполняется запрос на получение пользователя с ID: {}", id);
         try {
             return jdbcTemplate.queryForObject(sql, this::mapRowToUser, id);
         } catch (EmptyResultDataAccessException e) {
-            log.warn("Пользователь с ID {} не найден", id);
-            throw new UserNotFoundException("User with id " + id + " not found");
+            throw new UserNotFoundException("Пользователь с ID " + id + " не найден.");
         }
     }
 
     public List<User> getAllUsers() {
-        String sql = "SELECT * FROM users";
-        log.debug("Выполняется запрос на получение всех пользователей");
-
         try {
-            return jdbcTemplate.query(sql, this::mapRowToUser);
+            return jdbcTemplate.query("SELECT * FROM users", this::mapRowToUser);
         } catch (DataAccessException e) {
             log.error("Ошибка при получении списка пользователей", e);
             throw new RuntimeException("Не удалось получить список пользователей", e);
@@ -133,18 +99,12 @@ public class UserDao {
 
     public void deleteUser(Long userId) {
         if (!userExists(userId)) {
-            log.warn("Попытка удалить несуществующего пользователя с ID: {}", userId);
-            throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не найден.");
         }
 
         String sql = "DELETE FROM users WHERE id = ?";
         try {
-            int rowsAffected = jdbcTemplate.update(sql, userId);
-            if (rowsAffected == 0) {
-                log.warn("Пользователь с ID {} не найден", userId);
-                throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
-            }
-            log.debug("Пользователь удален: userId={}", userId);
+            jdbcTemplate.update(sql, userId);
         } catch (DataAccessException e) {
             log.error("Ошибка при удалении пользователя с ID {}", userId, e);
             throw new RuntimeException("Не удалось удалить пользователя", e);
@@ -152,22 +112,21 @@ public class UserDao {
     }
 
     public void addFriend(Long userId, Long friendId) {
-        // Проверка существования пользователей
         if (!userExists(userId)) {
-            throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не найден.");
         }
         if (!userExists(friendId)) {
-            throw new IllegalArgumentException("Пользователь с ID " + friendId + " не существует.");
+            throw new UserNotFoundException("Пользователь с ID " + friendId + " не найден.");
         }
-        // SQL-запросы для добавления дружбы
+        if (friendshipExists(userId, friendId)) {
+            log.warn("Дружба между userId={} и friendId={} уже существует.", userId, friendId);
+            throw new IllegalArgumentException("Дружба между userId=" + userId + " и friendId=" + friendId + " уже существует.");
+        }
+
         String sql = "INSERT INTO friendships (user_id, friend_id, status) VALUES (?, ?, 'CONFIRMED')";
         try {
-            // Добавляем дружбу от userId к friendId
             jdbcTemplate.update(sql, userId, friendId);
-            log.debug("Добавлена дружба: userId={}, friendId={}", userId, friendId);
-            // Добавляем дружбу от friendId к userId
-            jdbcTemplate.update(sql, friendId, userId);
-            log.debug("Добавлена дружба: userId={}, friendId={}", friendId, userId);
+            log.debug("Дружба добавлена: userId={}, friendId={}", userId, friendId);
         } catch (DataAccessException e) {
             log.error("Ошибка при добавлении дружбы: userId={}, friendId={}", userId, friendId, e);
             throw new RuntimeException("Не удалось добавить дружбу", e);
@@ -175,38 +134,85 @@ public class UserDao {
     }
 
     public void removeFriend(Long userId, Long friendId) {
+        if (!userExists(userId)) {
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не найден.");
+        }
+        if (!userExists(friendId)) {
+            throw new UserNotFoundException("Пользователь с ID " + friendId + " не найден.");
+        }
+
         String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
         try {
-            // Удаляем дружбу от userId к friendId
-            jdbcTemplate.update(sql, userId, friendId);
-            log.debug("Удалена дружба: userId={}, friendId={}", userId, friendId);
-            // Удаляем дружбу от friendId к userId
-            jdbcTemplate.update(sql, friendId, userId);
-            log.debug("Удалена дружба: userId={}, friendId={}", friendId, userId);
+            int result = jdbcTemplate.update(sql, userId, friendId);
+            if (result == 0) {
+                log.warn("Дружба между userId={} и friendId={} не существует. Запись не удалена.", userId, friendId);
+                // Не выбрасываем исключение, чтобы избежать статуса 404
+            } else {
+                log.debug("Дружба успешно удалена: userId={}, friendId={}", userId, friendId);
+            }
         } catch (DataAccessException e) {
             log.error("Ошибка при удалении дружбы: userId={}, friendId={}", userId, friendId, e);
             throw new RuntimeException("Не удалось удалить дружбу", e);
         }
     }
 
-    public Set<Long> getFriends(Long userId) {
-        String sql = "SELECT friend_id FROM friendships WHERE user_id = ? AND status = 'CONFIRMED'";
-        return new HashSet<>(jdbcTemplate.queryForList(sql, Long.class, userId));
-    }
+    public List<User> getFriends(Long userId) {
+        if (!userExists(userId)) {
+            throw new UserNotFoundException("Пользователь с ID " + userId + " не найден.");
+        }
 
-    private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
-        User user = new User();
-        user.setId(rs.getLong("id"));
-        user.setEmail(rs.getString("email"));
-        user.setLogin(rs.getString("login"));
-        user.setName(rs.getString("name"));
-        user.setBirthday(rs.getDate("birthday").toLocalDate());
-        return user;
+        String sql = "SELECT u.* FROM users u JOIN friendships f ON u.id = f.friend_id WHERE f.user_id = ? " +
+                "AND f.status = 'CONFIRMED'";
+        try {
+            return jdbcTemplate.query(sql, this::mapRowToUser, userId);
+        } catch (DataAccessException e) {
+            log.error("Ошибка при получении списка друзей для userId={}", userId, e);
+            throw new RuntimeException("Не удалось получить список друзей", e);
+        }
     }
 
     boolean userExists(Long id) {
         String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;
+    }
+
+    private boolean friendshipExists(Long userId, Long friendId) {
+        String sql = "SELECT COUNT(*) FROM friendships WHERE user_id = ? AND friend_id = ?";
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, userId, friendId);
+        return count != null && count > 0;
+    }
+
+    private void validateUser(User user, boolean isUpdate) {
+        if (isUpdate && user.getId() == null) {
+            throw new ValidationException("ID пользователя обязателен при обновлении.");
+        }
+        if (user.getEmail() == null || user.getEmail().isBlank()) {
+            throw new ValidationException("Email не может быть пустым.");
+        }
+        if (user.getLogin() == null || user.getLogin().isBlank()) {
+            throw new ValidationException("Login не может быть пустым.");
+        }
+        if (user.getBirthday() != null && user.getBirthday().isAfter(LocalDate.now())) {
+            throw new ValidationException("Дата рождения не может быть в будущем.");
+        }
+    }
+
+    private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
+        User user = new User();
+
+        user.setId(rs.getLong("id"));
+        user.setEmail(rs.getString("email"));
+        user.setLogin(rs.getString("login"));
+        user.setName(rs.getString("name"));
+
+        Date sqlDate = rs.getDate("birthday");
+        if (sqlDate != null) {
+            user.setBirthday(sqlDate.toLocalDate());
+        }
+
+        user.setFriendships(new HashSet<>());
+
+        return user;
     }
 }
