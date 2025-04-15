@@ -12,9 +12,7 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.sql.*;
 import java.time.LocalDate;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 @Repository
 public class UserDao {
