@@ -36,7 +36,7 @@ public class FilmController {
 
     // Добавление нового фильма
     @PostMapping
-    public Long addFilm(@RequestBody @Validated(OnCreate.class)@Valid Film film) {
+    public Film addFilm(@RequestBody @Validated(OnCreate.class)@Valid Film film) {
         log.info("Добавлен новый фильм: {}", film.getName());
         return filmService.addFilm(film);
     }

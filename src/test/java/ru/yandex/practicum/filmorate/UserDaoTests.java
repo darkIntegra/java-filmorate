@@ -148,11 +148,11 @@ class UserDaoTests {
         userDao.addFriend(userId1, userId2);
 
         // Assert
-        Set<Long> friendsOfUser1 = userDao.getFriends(userId1);
-        Set<Long> friendsOfUser2 = userDao.getFriends(userId2);
+        List<User> friendsOfUser1 = userDao.getFriends(userId1);
+        List<User> friendsOfUser2 = userDao.getFriends(userId2);
 
-        assertThat(friendsOfUser1).containsExactly(userId2);
-        assertThat(friendsOfUser2).containsExactly(userId1);
+        assertThat(friendsOfUser1).containsExactly(user2);
+        assertThat(friendsOfUser2).containsExactly(user1);
 
         // Remove friend
         userDao.removeFriend(userId1, userId2);

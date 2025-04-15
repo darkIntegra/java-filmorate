@@ -26,7 +26,10 @@ public class UserService {
     }
 
     public User addUser(User user) {
-        userStorage.createUser(user);
+        Long generatedId = userStorage.createUser(user);
+        // Устанавливаем сгенерированный ID в объект User
+        user.setId(generatedId);
+        // Возвращаем объект User с ID
         return user;
     }
 

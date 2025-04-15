@@ -65,10 +65,14 @@ public class FilmDao {
         return filmId;
     }
 
-    public void updateFilm(Film film) {
+    public Film updateFilm(Film film) {
+        if (!filmExists(film.getId())) {
+            log.warn("Попытка обновить несуществующий фильм с ID: {}", film.getId());
+            throw new IllegalArgumentException("Фильм с ID " + film.getId() + " не существует.");
+        }
+
         // SQL-запрос для обновления фильма
         String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? WHERE id = ?";
-        // Выполняем обновление данных фильма
         jdbcTemplate.update(sql,
                 film.getName(),
                 film.getDescription(),
@@ -83,6 +87,7 @@ public class FilmDao {
         if (genreIds != null && !genreIds.isEmpty()) {
             addGenresToFilm(film.getId(), genreIds);
         }
+        return getFilmById(film.getId());
     }
 
     public Film getFilmById(Long id) {
@@ -97,9 +102,9 @@ public class FilmDao {
             List<Film> films = jdbcTemplate.query(sql, this::mapRowToFilm, id);
             if (films.isEmpty()) {
                 log.warn("Фильм с ID {} не найден", id);
-                return null; // Возвращаем null, если фильм не найден
+                throw new IllegalArgumentException("Фильм с ID " + id + " не существует.");
             }
-            return films.get(0); // Возвращаем первый элемент списка
+            return films.get(0);
         } catch (Exception e) {
             log.error("Ошибка при получении фильма с ID {}", id, e);
             throw new RuntimeException("Не удалось получить фильм с ID " + id, e);

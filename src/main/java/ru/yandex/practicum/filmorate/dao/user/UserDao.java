@@ -158,20 +158,23 @@ public class UserDao {
     public void removeFriend(Long userId, Long friendId) {
         String sql = "DELETE FROM friendships WHERE user_id = ? AND friend_id = ?";
         try {
+            // Удаляем дружбу от userId к friendId
             jdbcTemplate.update(sql, userId, friendId);
+            log.debug("Удалена дружба: userId={}, friendId={}", userId, friendId);
+            // Удаляем дружбу от friendId к userId
             jdbcTemplate.update(sql, friendId, userId);
+            log.debug("Удалена дружба: userId={}, friendId={}", friendId, userId);
         } catch (DataAccessException e) {
+            log.error("Ошибка при удалении дружбы: userId={}, friendId={}", userId, friendId, e);
             throw new RuntimeException("Не удалось удалить дружбу", e);
         }
     }
 
-    public Set<Long> getFriends(Long userId) {
-        String sql = "SELECT friend_id FROM friendships WHERE user_id = ? AND status = 'CONFIRMED'";
-        try {
-            return new HashSet<>(jdbcTemplate.queryForList(sql, Long.class, userId));
-        } catch (DataAccessException e) {
-            throw new RuntimeException("Не удалось получить список друзей для пользователя с ID " + userId, e);
-        }
+    public List<User> getFriends(Long userId) {
+        String sql = "SELECT u.* FROM users u " +
+                "JOIN friendships f ON u.id = f.friend_id " +
+                "WHERE f.user_id = ? AND f.status = 'CONFIRMED'";
+        return jdbcTemplate.query(sql, this::mapRowToUser, userId);
     }
 
     private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {

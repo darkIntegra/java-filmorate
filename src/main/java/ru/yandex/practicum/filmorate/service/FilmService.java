@@ -22,14 +22,15 @@ public class FilmService {
         return filmStorage.getAllFilms();
     }
 
-    public Long addFilm(Film film) {
-        filmStorage.createFilm(film);
-        return film.getId();
+    public Film addFilm(Film film) {
+        Long generatedId = filmStorage.createFilm(film);
+        film.setId(generatedId);
+        return film;
     }
 
     public Film updateFilm(Film film) {
         filmStorage.updateFilm(film);
-        return film;
+        return filmStorage.getFilmById(film.getId());
     }
 
     public Film getFilmById(Long id) {
