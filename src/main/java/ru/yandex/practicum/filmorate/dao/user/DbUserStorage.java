@@ -57,6 +57,9 @@ public class DbUserStorage implements UserStorage {
 
     @Override
     public List<User> getFriends(Long userId) {
+        if (!userDao.userExists(userId)) {
+            throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+        }
         Set<Long> friendIds = userDao.getFriends(userId);
         return friendIds.stream()
                 .map(this::getUserById)

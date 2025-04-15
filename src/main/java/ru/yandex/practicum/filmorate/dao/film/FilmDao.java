@@ -143,6 +143,11 @@ public class FilmDao {
     }
 
     public void addLike(Long filmId, Long userId) {
+        if (!filmExists(filmId)) {
+            log.error("Фильм с ID {} не существует.", filmId);
+            throw new IllegalArgumentException("Фильм с ID " + filmId + " не существует.");
+        }
+
         if (!userExists(userId)) {
             log.error("Пользователь с ID {} не существует.", userId);
             throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
@@ -160,6 +165,11 @@ public class FilmDao {
 
 
     public void removeLike(Long filmId, Long userId) {
+        if (!filmExists(filmId)) {
+            log.error("Фильм с ID {} не существует.", filmId);
+            throw new IllegalArgumentException("Фильм с ID " + filmId + " не существует.");
+        }
+
         if (!userExists(userId)) {
             log.error("Пользователь с ID {} не существует.", userId);
             throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
@@ -170,9 +180,9 @@ public class FilmDao {
             int rowsAffected = jdbcTemplate.update(sql, filmId, userId);
             if (rowsAffected == 0) {
                 log.warn("Лайк не найден: filmId={}, userId={}", filmId, userId);
-            } else {
-                log.debug("Лайк удален: filmId={}, userId={}", filmId, userId);
+                throw new IllegalArgumentException("Лайк для фильма с ID " + filmId + " и пользователя с ID " + userId + " не найден.");
             }
+            log.debug("Лайк удален: filmId={}, userId={}", filmId, userId);
         } catch (DataAccessException e) {
             log.error("Ошибка при удалении лайка: filmId={}, userId={}", filmId, userId, e);
             throw new RuntimeException("Не удалось удалить лайк", e);
@@ -216,9 +226,9 @@ public class FilmDao {
         return count != null && count > 0;
     }
 
-    private boolean filmExists(Long id) {
+    private boolean filmExists(Long filmId) {
         String sql = "SELECT COUNT(*) FROM films WHERE id = ?";
-        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
+        Integer count = jdbcTemplate.queryForObject(sql, Integer.class, filmId);
         return count != null && count > 0;
     }
 }

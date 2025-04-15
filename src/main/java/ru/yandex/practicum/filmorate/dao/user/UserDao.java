@@ -8,6 +8,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.support.GeneratedKeyHolder;
 import org.springframework.jdbc.support.KeyHolder;
 import org.springframework.stereotype.Repository;
+import ru.yandex.practicum.filmorate.exception.UserNotFoundException;
 import ru.yandex.practicum.filmorate.model.User;
 
 import java.sql.*;
@@ -105,18 +106,16 @@ public class UserDao {
     }
 
     public User getUserById(Long id) {
-        // Проверка входных данных
         if (id == null) {
             throw new IllegalArgumentException("ID пользователя не может быть null.");
         }
-        // SQL-запрос
         String sql = "SELECT * FROM users WHERE id = ?";
         log.debug("Выполняется запрос на получение пользователя с ID: {}", id);
         try {
             return jdbcTemplate.queryForObject(sql, this::mapRowToUser, id);
         } catch (EmptyResultDataAccessException e) {
             log.warn("Пользователь с ID {} не найден", id);
-            throw new RuntimeException("User with id " + id + " not found");
+            throw new UserNotFoundException("User with id " + id + " not found");
         }
     }
 
