@@ -11,6 +11,7 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -147,11 +148,11 @@ class UserDaoTests {
         userDao.addFriend(userId1, userId2);
 
         // Assert
-        List<User> friendsOfUser1 = userDao.getFriends(userId1);
-        List<User> friendsOfUser2 = userDao.getFriends(userId2);
+        Set<Long> friendsOfUser1 = userDao.getFriends(userId1);
+        Set<Long> friendsOfUser2 = userDao.getFriends(userId2);
 
-        assertThat(friendsOfUser1).containsExactly(user2);
-        assertThat(friendsOfUser2).containsExactly(user1);
+        assertThat(friendsOfUser1).containsExactly(userId2);
+        assertThat(friendsOfUser2).containsExactly(userId1);
 
         // Remove friend
         userDao.removeFriend(userId1, userId2);

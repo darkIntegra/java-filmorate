@@ -8,8 +8,6 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.Collection;
 import java.util.List;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 public class UserService {
@@ -26,10 +24,9 @@ public class UserService {
     }
 
     public User addUser(User user) {
+        //времени на чистую архитектуру уже не хватает ужасно
         Long generatedId = userStorage.createUser(user);
-        // Устанавливаем сгенерированный ID в объект User
         user.setId(generatedId);
-        // Возвращаем объект User с ID
         return user;
     }
 
@@ -51,18 +48,10 @@ public class UserService {
     }
 
     public List<User> getFriends(Long userId) {
-        Set<Long> friendIds = userStorage.getFriends(userId);
-        return friendIds.stream()
-                .map(userStorage::getUserById)
-                .collect(Collectors.toList());
+        return userStorage.getFriends(userId);
     }
 
     public List<User> getCommonFriends(Long userId, Long otherUserId) {
-        Set<Long> userFriends = userStorage.getFriends(userId);
-        Set<Long> otherUserFriends = userStorage.getFriends(otherUserId);
-        return userFriends.stream()
-                .filter(otherUserFriends::contains)
-                .map(userStorage::getUserById)
-                .collect(Collectors.toList());
+        return userStorage.getCommonFriends(userId, otherUserId);
     }
 }

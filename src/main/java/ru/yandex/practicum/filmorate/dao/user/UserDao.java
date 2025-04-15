@@ -12,7 +12,9 @@ import ru.yandex.practicum.filmorate.model.User;
 
 import java.sql.*;
 import java.time.LocalDate;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Repository
 public class UserDao {
@@ -168,11 +170,9 @@ public class UserDao {
         }
     }
 
-    public List<User> getFriends(Long userId) {
-        String sql = "SELECT u.* FROM users u " +
-                "JOIN friendships f ON u.id = f.friend_id " +
-                "WHERE f.user_id = ? AND f.status = 'CONFIRMED'";
-        return jdbcTemplate.query(sql, this::mapRowToUser, userId);
+    public Set<Long> getFriends(Long userId) {
+        String sql = "SELECT friend_id FROM friendships WHERE user_id = ? AND status = 'CONFIRMED'";
+        return new HashSet<>(jdbcTemplate.queryForList(sql, Long.class, userId));
     }
 
     private User mapRowToUser(ResultSet rs, int rowNum) throws SQLException {
@@ -185,7 +185,7 @@ public class UserDao {
         return user;
     }
 
-    private boolean userExists(Long id) {
+    boolean userExists(Long id) {
         String sql = "SELECT COUNT(*) FROM users WHERE id = ?";
         Integer count = jdbcTemplate.queryForObject(sql, Integer.class, id);
         return count != null && count > 0;

@@ -16,7 +16,7 @@ CREATE TABLE IF NOT EXISTS films (
     name VARCHAR(255) NOT NULL,
     description TEXT,
     release_date DATE,
-    duration INT,
+    duration BIGINT,
     rating_id BIGINT,
     FOREIGN KEY (rating_id) REFERENCES ratings(id) ON DELETE SET NULL
 );

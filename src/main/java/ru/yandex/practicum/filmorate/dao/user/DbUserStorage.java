@@ -7,6 +7,7 @@ import ru.yandex.practicum.filmorate.storage.user.UserStorage;
 
 import java.util.List;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 @Component("dbUserStorage")
 public class DbUserStorage implements UserStorage {
@@ -40,17 +41,35 @@ public class DbUserStorage implements UserStorage {
 
     @Override
     public void addFriend(Long userId, Long friendId) {
-        // Логика добавления друзей в базу данных
+        if (!userDao.userExists(userId) || !userDao.userExists(friendId)) {
+            throw new IllegalArgumentException("Один из пользователей не существует.");
+        }
+        userDao.addFriend(userId, friendId);
     }
 
     @Override
     public void removeFriend(Long userId, Long friendId) {
-        // Логика удаления друзей из базы данных
+        if (!userDao.userExists(userId) || !userDao.userExists(friendId)) {
+            throw new IllegalArgumentException("Один из пользователей не существует.");
+        }
+        userDao.removeFriend(userId, friendId);
     }
 
     @Override
-    public Set<Long> getFriends(Long userId) {
-        // Логика получения списка друзей из базы данных
-        return null;
+    public List<User> getFriends(Long userId) {
+        Set<Long> friendIds = userDao.getFriends(userId);
+        return friendIds.stream()
+                .map(this::getUserById)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<User> getCommonFriends(Long userId, Long otherUserId) {
+        Set<Long> userFriends = userDao.getFriends(userId);
+        Set<Long> otherUserFriends = userDao.getFriends(otherUserId);
+        return userFriends.stream()
+                .filter(otherUserFriends::contains)
+                .map(this::getUserById)
+                .collect(Collectors.toList());
     }
 }
