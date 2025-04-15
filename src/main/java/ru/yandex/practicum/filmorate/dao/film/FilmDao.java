@@ -142,6 +142,26 @@ public class FilmDao {
         }
     }
 
+    public void removeFilm(Long filmId) {
+        if (!filmExists(filmId)) {
+            log.warn("Попытка удалить несуществующий фильм с ID: {}", filmId);
+            throw new IllegalArgumentException("Фильм с ID " + filmId + " не существует.");
+        }
+
+        String sql = "DELETE FROM films WHERE id = ?";
+        try {
+            int rowsAffected = jdbcTemplate.update(sql, filmId);
+            if (rowsAffected == 0) {
+                log.warn("Фильм с ID {} не найден", filmId);
+                throw new IllegalArgumentException("Фильм с ID " + filmId + " не существует.");
+            }
+            log.debug("Фильм удален: filmId={}", filmId);
+        } catch (DataAccessException e) {
+            log.error("Ошибка при удалении фильма с ID {}", filmId, e);
+            throw new RuntimeException("Не удалось удалить фильм", e);
+        }
+    }
+
     public void addLike(Long filmId, Long userId) {
         if (!filmExists(filmId)) {
             log.error("Фильм с ID {} не существует.", filmId);

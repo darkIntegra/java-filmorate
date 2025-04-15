@@ -40,6 +40,11 @@ public class DbUserStorage implements UserStorage {
     }
 
     @Override
+    public void deleteUser(Long userId) {
+        userDao.deleteUser(userId);
+    }
+
+    @Override
     public void addFriend(Long userId, Long friendId) {
         if (!userDao.userExists(userId) || !userDao.userExists(friendId)) {
             throw new IllegalArgumentException("Один из пользователей не существует.");

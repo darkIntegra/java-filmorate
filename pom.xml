@@ -80,10 +80,14 @@
 			<plugin>
 				<groupId>org.apache.maven.plugins</groupId>
 				<artifactId>maven-compiler-plugin</artifactId>
-				<version>3.11.0</version>
 				<configuration>
-					<source>${java.version}</source>
-					<target>${java.version}</target>
+					<annotationProcessorPaths>
+						<path>
+							<groupId>org.projectlombok</groupId>
+							<artifactId>lombok</artifactId>
+							<version>1.18.36</version>
+						</path>
+					</annotationProcessorPaths>
 				</configuration>
 			</plugin>
 
@@ -106,6 +110,55 @@
 					</execution>
 				</executions>
 			</plugin>
+
+			<!-- Maven Clean Plugin для удаления файлов базы данных перед тестами -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-clean-plugin</artifactId>
+				<version>3.2.0</version>
+				<configuration>
+					<filesets>
+						<fileset>
+							<directory>${project.basedir}</directory>
+							<includes>
+								<include>filmorate.mv.db</include>
+								<include>filmorate.trace.db</include>
+							</includes>
+						</fileset>
+					</filesets>
+				</configuration>
+				<executions>
+					<execution>
+						<id>auto-clean</id>
+						<phase>pre-integration-test</phase>
+						<goals>
+							<goal>clean</goal>
+						</goals>
+					</execution>
+				</executions>
+			</plugin>
 		</plugins>
 	</build>
+
+	<!-- Профили для работы с H2 в разных режимах -->
+	<profiles>
+		<!-- Профиль для тестов (H2 в памяти) -->
+		<profile>
+			<id>test</id>
+			<activation>
+				<activeByDefault>true</activeByDefault>
+			</activation>
+			<properties>
+				<spring.profiles.active>test</spring.profiles.active>
+			</properties>
+		</profile>
+
+		<!-- Профиль для локального запуска (H2 на файловой системе) -->
+		<profile>
+			<id>local</id>
+			<properties>
+				<spring.profiles.active>local</spring.profiles.active>
+			</properties>
+		</profile>
+	</profiles>
 </project>

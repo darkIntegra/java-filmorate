@@ -38,6 +38,11 @@ public class DbFilmStorage implements FilmStorage {
     }
 
     @Override
+    public void removeFilm(Long filmId) {
+        filmDao.removeFilm(filmId);
+    }
+
+    @Override
     public void addLike(Long filmId, Long userId) {
         filmDao.addLike(filmId, userId);
     }

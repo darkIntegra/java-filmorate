@@ -131,6 +131,26 @@ public class UserDao {
         }
     }
 
+    public void deleteUser(Long userId) {
+        if (!userExists(userId)) {
+            log.warn("Попытка удалить несуществующего пользователя с ID: {}", userId);
+            throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+        }
+
+        String sql = "DELETE FROM users WHERE id = ?";
+        try {
+            int rowsAffected = jdbcTemplate.update(sql, userId);
+            if (rowsAffected == 0) {
+                log.warn("Пользователь с ID {} не найден", userId);
+                throw new IllegalArgumentException("Пользователь с ID " + userId + " не существует.");
+            }
+            log.debug("Пользователь удален: userId={}", userId);
+        } catch (DataAccessException e) {
+            log.error("Ошибка при удалении пользователя с ID {}", userId, e);
+            throw new RuntimeException("Не удалось удалить пользователя", e);
+        }
+    }
+
     public void addFriend(Long userId, Long friendId) {
         // Проверка существования пользователей
         if (!userExists(userId)) {
