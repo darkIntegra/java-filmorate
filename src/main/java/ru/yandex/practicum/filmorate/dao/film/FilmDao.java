@@ -137,7 +137,7 @@ public class FilmDao {
         }
 
         String sql = """
-                    SELECT 
+                    SELECT\s
                         f.id AS film_id,
                         f.name AS film_name,
                         f.description AS film_description,
@@ -147,19 +147,19 @@ public class FilmDao {
                         r.name AS rating_name,
                         COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
                         COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
-                    FROM 
+                    FROM\s
                         films f
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         ratings r ON f.rating_id = r.id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         film_genres fg ON f.id = fg.film_id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         genres g ON fg.genre_id = g.id
-                    WHERE 
+                    WHERE\s
                         f.id = ?
-                    GROUP BY 
+                    GROUP BY\s
                         f.id, r.id;
-                """;
+               \s""";
 
         log.debug("Выполняется запрос на получение фильма с ID: {}", id);
 
@@ -214,7 +214,7 @@ public class FilmDao {
 
     public List<Film> getAllFilms() {
         String sql = """
-                    SELECT 
+                    SELECT\s
                         f.id AS film_id,
                         f.name AS film_name,
                         f.description AS film_description,
@@ -224,17 +224,17 @@ public class FilmDao {
                         r.name AS rating_name,
                         COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
                         COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
-                    FROM 
+                    FROM\s
                         films f
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         ratings r ON f.rating_id = r.id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         film_genres fg ON f.id = fg.film_id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         genres g ON fg.genre_id = g.id
-                    GROUP BY 
+                    GROUP BY\s
                         f.id, r.id;
-                """;
+               \s""";
 
         log.debug("Выполняется запрос на получение всех фильмов");
 
@@ -248,7 +248,8 @@ public class FilmDao {
                 film.setDuration(rs.getLong("film_duration"));
 
                 // Устанавливаем рейтинг (MPA)
-                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") : null;
+                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") :
+                        null;
                 if (ratingId != null) {
                     Rating rating = new Rating();
                     rating.setId(ratingId);
@@ -290,7 +291,7 @@ public class FilmDao {
         }
 
         String sql = """
-                    SELECT 
+                    SELECT\s
                         f.id AS film_id,
                         f.name AS film_name,
                         f.description AS film_description,
@@ -300,22 +301,22 @@ public class FilmDao {
                         r.name AS rating_name,
                         COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
                         COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
-                    FROM 
+                    FROM\s
                         films f
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         ratings r ON f.rating_id = r.id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         film_genres fg ON f.id = fg.film_id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         genres g ON fg.genre_id = g.id
-                    LEFT JOIN 
+                    LEFT JOIN\s
                         likes l ON f.id = l.film_id
-                    GROUP BY 
+                    GROUP BY\s
                         f.id, r.id
-                    ORDER BY 
+                    ORDER BY\s
                         COUNT(l.user_id) DESC
                     LIMIT ?;
-                """;
+               \s""";
 
         log.debug("Выполняется запрос на получение {} самых популярных фильмов", count);
 
@@ -329,7 +330,8 @@ public class FilmDao {
                 film.setDuration(rs.getLong("film_duration"));
 
                 // Устанавливаем рейтинг (MPA)
-                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") : null;
+                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") :
+                        null;
                 if (ratingId != null) {
                     Rating rating = new Rating();
                     rating.setId(ratingId);
