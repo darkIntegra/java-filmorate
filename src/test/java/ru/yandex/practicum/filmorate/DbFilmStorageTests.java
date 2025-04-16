@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import ru.yandex.practicum.filmorate.dao.film.DbFilmStorage;
 import ru.yandex.practicum.filmorate.model.Film;
@@ -19,10 +20,24 @@ public class DbFilmStorageTests {
     @Autowired
     private DbFilmStorage dbFilmStorage;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
-        // Очистка всех фильмов перед каждым тестом
-        dbFilmStorage.getAllFilms().forEach(film -> dbFilmStorage.removeFilm(film.getId()));
+        // Отключаем проверку внешних ключей
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+
+        // Очищаем таблицы
+        jdbcTemplate.execute("TRUNCATE TABLE likes");
+        jdbcTemplate.execute("TRUNCATE TABLE film_genres");
+        jdbcTemplate.execute("TRUNCATE TABLE films");
+        jdbcTemplate.execute("TRUNCATE TABLE users");
+        jdbcTemplate.execute("TRUNCATE TABLE genres");
+        jdbcTemplate.execute("TRUNCATE TABLE ratings");
+
+        // Включаем проверку внешних ключей
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
     }
 
     @Test

@@ -3,6 +3,7 @@ package ru.yandex.practicum.filmorate;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import ru.yandex.practicum.filmorate.dao.user.DbUserStorage;
 import ru.yandex.practicum.filmorate.model.User;
@@ -19,11 +20,28 @@ public class DbUserStorageTests {
     @Autowired
     private DbUserStorage dbUserStorage;
 
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
+
     @BeforeEach
     void setUp() {
-        // Очистка всех пользователей перед каждым тестом
-        dbUserStorage.getAllUsers().forEach(user -> dbUserStorage.deleteUser(user.getId()));
+        // Очистка таблиц перед каждым тестом
+        clearTables();
     }
+
+    private void clearTables() {
+        // Отключаем проверку внешних ключей
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY FALSE");
+
+        // Очищаем таблицы
+        jdbcTemplate.execute("TRUNCATE TABLE friendships");
+        jdbcTemplate.execute("TRUNCATE TABLE likes");
+        jdbcTemplate.execute("TRUNCATE TABLE users");
+
+        // Включаем проверку внешних ключей
+        jdbcTemplate.execute("SET REFERENTIAL_INTEGRITY TRUE");
+    }
+
 
     @Test
     public void testCreateUser() {

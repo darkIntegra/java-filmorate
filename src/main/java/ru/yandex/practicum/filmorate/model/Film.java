@@ -1,7 +1,6 @@
 package ru.yandex.practicum.filmorate.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
-import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -37,12 +36,6 @@ public class Film {
     @NotNull(groups = OnCreate.class, message = "Продолжительность фильма не может быть null")
     @Positive(groups = {OnCreate.class, OnUpdate.class}, message = "Продолжительность фильма должна быть положительной")
     private Long duration;
-
-    @JsonProperty("ratingId")
-    private Long ratingId;
-
-    @JsonProperty("genreIds")
-    private List<Long> genreIds;
 
     @AssertTrue(groups = {OnCreate.class, OnUpdate.class}, message = "Дата релиза не может быть раньше 28 декабря 1895 года")
     public boolean isReleaseDateValid() {

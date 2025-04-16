@@ -14,6 +14,7 @@ import ru.yandex.practicum.filmorate.model.Genre;
 import ru.yandex.practicum.filmorate.model.Rating;
 
 import java.sql.*;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -79,7 +80,7 @@ public class FilmDao {
             ps.setString(2, film.getDescription());
             ps.setDate(3, Date.valueOf(film.getReleaseDate()));
             ps.setLong(4, film.getDuration());
-            ps.setObject(5, film.getMpa() != null ? film.getMpa().getId() : null, Types.BIGINT); // Поддержка nullable rating_id
+            ps.setObject(5, film.getMpa() != null ? film.getMpa().getId() : null, Types.BIGINT);
             return ps;
         }, keyHolder);
 
@@ -105,21 +106,28 @@ public class FilmDao {
         }
 
         // SQL-запрос для обновления фильма
-        String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? WHERE id = ?";
+        String sql = "UPDATE films SET name = ?, description = ?, release_date = ?, duration = ?, rating_id = ? " +
+                "WHERE id = ?";
         jdbcTemplate.update(sql,
                 film.getName(),
                 film.getDescription(),
                 Date.valueOf(film.getReleaseDate()),
                 film.getDuration(),
-                film.getRatingId(),
+                film.getMpa() != null ? film.getMpa().getId() : null, // Получаем ID из объекта Rating
                 film.getId());
-        // Удаляем старые жанры фильма
-        deleteGenresByFilmId(film.getId());
-        // Добавляем новые жанры фильма
-        List<Long> genreIds = film.getGenreIds();
-        if (genreIds != null && !genreIds.isEmpty()) {
-            addGenresToFilm(film.getId(), genreIds);
+
+        List<Genre> genres = film.getGenres();
+        if (genres != null && !genres.isEmpty()) {
+            // Удаляем старые жанры фильма
+            deleteGenresByFilmId(film.getId());
+            // Добавляем новые жанры фильма
+            addGenresToFilm(film.getId(), genres.stream()
+                    .map(Genre::getId) // Преобразуем список Genre в список их ID
+                    .toList());
+        } else {
+            log.debug("Жанры для фильма с ID {} не были переданы. Старые жанры остаются без изменений.", film.getId());
         }
+
         return getFilmById(film.getId());
     }
 
@@ -128,31 +136,76 @@ public class FilmDao {
             throw new IllegalArgumentException("ID фильма не может быть null.");
         }
 
-        // Основной запрос для получения фильма
-        String sqlFilm = "SELECT * FROM films WHERE id = ?";
+        String sql = """
+                    SELECT 
+                        f.id AS film_id,
+                        f.name AS film_name,
+                        f.description AS film_description,
+                        f.release_date AS film_release_date,
+                        f.duration AS film_duration,
+                        r.id AS rating_id,
+                        r.name AS rating_name,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
+                    FROM 
+                        films f
+                    LEFT JOIN 
+                        ratings r ON f.rating_id = r.id
+                    LEFT JOIN 
+                        film_genres fg ON f.id = fg.film_id
+                    LEFT JOIN 
+                        genres g ON fg.genre_id = g.id
+                    WHERE 
+                        f.id = ?
+                    GROUP BY 
+                        f.id, r.id;
+                """;
+
         log.debug("Выполняется запрос на получение фильма с ID: {}", id);
 
         try {
-            // Получаем основные данные фильма
-            List<Film> films = jdbcTemplate.query(sqlFilm, this::mapRowToFilm, id);
-            if (films.isEmpty()) {
-                log.warn("Фильм с ID {} не найден", id);
-                throw new IllegalArgumentException("Фильм с ID " + id + " не существует.");
-            }
-            Film film = films.get(0);
+            return jdbcTemplate.queryForObject(sql, (rs, rowNum) -> {
+                Film film = new Film();
+                film.setId(rs.getLong("film_id"));
+                film.setName(rs.getString("film_name"));
+                film.setDescription(rs.getString("film_description"));
+                film.setReleaseDate(rs.getDate("film_release_date").toLocalDate());
+                film.setDuration(rs.getLong("film_duration"));
 
-            // Получаем данные рейтинга (MPA)
-            Optional<Rating> mpa = getRatingByFilmId(film.getId());
-            mpa.ifPresentOrElse(
-                    film::setMpa,
-                    () -> film.setMpa(null) // Устанавливаем null, если рейтинг отсутствует
-            );
+                // Устанавливаем рейтинг (MPA)
+                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") : null;
+                if (ratingId != null) {
+                    Rating rating = new Rating();
+                    rating.setId(ratingId);
+                    rating.setName(rs.getString("rating_name"));
+                    film.setMpa(rating);
+                } else {
+                    film.setMpa(null); // Если рейтинг отсутствует
+                }
 
-            // Получаем данные жанров
-            List<Genre> genres = getGenresByFilmId(id);
-            film.setGenres(genres); // Устанавливаем жанры
+                // Устанавливаем жанры
+                String genreIdsStr = rs.getString("genre_ids");
+                String genreNamesStr = rs.getString("genre_names");
 
-            return film;
+                List<Genre> genres = new ArrayList<>();
+                if (!genreIdsStr.isEmpty() && !genreNamesStr.isEmpty()) {
+                    String[] genreIds = genreIdsStr.split(",");
+                    String[] genreNames = genreNamesStr.split(",");
+
+                    for (int i = 0; i < genreIds.length; i++) {
+                        Genre genre = new Genre();
+                        genre.setId(Long.parseLong(genreIds[i]));
+                        genre.setName(genreNames[i]);
+                        genres.add(genre);
+                    }
+                }
+                film.setGenres(genres);
+
+                return film;
+            }, id);
+        } catch (EmptyResultDataAccessException e) {
+            log.warn("Фильм с ID {} не найден", id);
+            throw new FilmNotFoundException("Фильм с ID " + id + " не существует.");
         } catch (Exception e) {
             log.error("Ошибка при получении фильма с ID {}", id, e);
             throw new RuntimeException("Не удалось получить фильм с ID " + id, e);
@@ -160,10 +213,71 @@ public class FilmDao {
     }
 
     public List<Film> getAllFilms() {
-        String sql = "SELECT * FROM films";
+        String sql = """
+                    SELECT 
+                        f.id AS film_id,
+                        f.name AS film_name,
+                        f.description AS film_description,
+                        f.release_date AS film_release_date,
+                        f.duration AS film_duration,
+                        r.id AS rating_id,
+                        r.name AS rating_name,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
+                    FROM 
+                        films f
+                    LEFT JOIN 
+                        ratings r ON f.rating_id = r.id
+                    LEFT JOIN 
+                        film_genres fg ON f.id = fg.film_id
+                    LEFT JOIN 
+                        genres g ON fg.genre_id = g.id
+                    GROUP BY 
+                        f.id, r.id;
+                """;
+
         log.debug("Выполняется запрос на получение всех фильмов");
+
         try {
-            return jdbcTemplate.query(sql, this::mapRowToFilm);
+            return jdbcTemplate.query(sql, (rs, rowNum) -> {
+                Film film = new Film();
+                film.setId(rs.getLong("film_id"));
+                film.setName(rs.getString("film_name"));
+                film.setDescription(rs.getString("film_description"));
+                film.setReleaseDate(rs.getDate("film_release_date").toLocalDate());
+                film.setDuration(rs.getLong("film_duration"));
+
+                // Устанавливаем рейтинг (MPA)
+                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") : null;
+                if (ratingId != null) {
+                    Rating rating = new Rating();
+                    rating.setId(ratingId);
+                    rating.setName(rs.getString("rating_name"));
+                    film.setMpa(rating);
+                } else {
+                    film.setMpa(null); // Если рейтинг отсутствует
+                }
+
+                // Устанавливаем жанры
+                String genreIdsStr = rs.getString("genre_ids");
+                String genreNamesStr = rs.getString("genre_names");
+
+                List<Genre> genres = new ArrayList<>();
+                if (!genreIdsStr.isEmpty() && !genreNamesStr.isEmpty()) {
+                    String[] genreIds = genreIdsStr.split(",");
+                    String[] genreNames = genreNamesStr.split(",");
+
+                    for (int i = 0; i < genreIds.length; i++) {
+                        Genre genre = new Genre();
+                        genre.setId(Long.parseLong(genreIds[i]));
+                        genre.setName(genreNames[i]);
+                        genres.add(genre);
+                    }
+                }
+                film.setGenres(genres);
+
+                return film;
+            });
         } catch (DataAccessException e) {
             log.error("Ошибка при получении списка фильмов", e);
             throw new RuntimeException("Не удалось получить список фильмов", e);
@@ -175,15 +289,76 @@ public class FilmDao {
             throw new IllegalArgumentException("Количество популярных фильмов должно быть больше 0.");
         }
 
-        String sql = "SELECT f.* FROM films f " +
-                "LEFT JOIN likes l ON f.id = l.film_id " +
-                "GROUP BY f.id " +
-                "ORDER BY COUNT(l.user_id) DESC " +
-                "LIMIT ?";
+        String sql = """
+                    SELECT 
+                        f.id AS film_id,
+                        f.name AS film_name,
+                        f.description AS film_description,
+                        f.release_date AS film_release_date,
+                        f.duration AS film_duration,
+                        r.id AS rating_id,
+                        r.name AS rating_name,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.id ORDER BY g.id), '') AS genre_ids,
+                        COALESCE(GROUP_CONCAT(DISTINCT g.name ORDER BY g.id), '') AS genre_names
+                    FROM 
+                        films f
+                    LEFT JOIN 
+                        ratings r ON f.rating_id = r.id
+                    LEFT JOIN 
+                        film_genres fg ON f.id = fg.film_id
+                    LEFT JOIN 
+                        genres g ON fg.genre_id = g.id
+                    LEFT JOIN 
+                        likes l ON f.id = l.film_id
+                    GROUP BY 
+                        f.id, r.id
+                    ORDER BY 
+                        COUNT(l.user_id) DESC
+                    LIMIT ?;
+                """;
 
         log.debug("Выполняется запрос на получение {} самых популярных фильмов", count);
+
         try {
-            return jdbcTemplate.query(sql, this::mapRowToFilm, count);
+            return jdbcTemplate.query(sql, (rs, rowNum) -> {
+                Film film = new Film();
+                film.setId(rs.getLong("film_id"));
+                film.setName(rs.getString("film_name"));
+                film.setDescription(rs.getString("film_description"));
+                film.setReleaseDate(rs.getDate("film_release_date").toLocalDate());
+                film.setDuration(rs.getLong("film_duration"));
+
+                // Устанавливаем рейтинг (MPA)
+                Long ratingId = rs.getObject("rating_id") != null ? rs.getLong("rating_id") : null;
+                if (ratingId != null) {
+                    Rating rating = new Rating();
+                    rating.setId(ratingId);
+                    rating.setName(rs.getString("rating_name"));
+                    film.setMpa(rating);
+                } else {
+                    film.setMpa(null); // Если рейтинг отсутствует
+                }
+
+                // Устанавливаем жанры
+                String genreIdsStr = rs.getString("genre_ids");
+                String genreNamesStr = rs.getString("genre_names");
+
+                List<Genre> genres = new ArrayList<>();
+                if (!genreIdsStr.isEmpty() && !genreNamesStr.isEmpty()) {
+                    String[] genreIds = genreIdsStr.split(",");
+                    String[] genreNames = genreNamesStr.split(",");
+
+                    for (int i = 0; i < genreIds.length; i++) {
+                        Genre genre = new Genre();
+                        genre.setId(Long.parseLong(genreIds[i]));
+                        genre.setName(genreNames[i]);
+                        genres.add(genre);
+                    }
+                }
+                film.setGenres(genres);
+
+                return film;
+            }, count);
         } catch (DataAccessException e) {
             log.error("Ошибка при получении популярных фильмов", e);
             throw new RuntimeException("Не удалось получить популярные фильмы", e);
@@ -248,7 +423,8 @@ public class FilmDao {
             int rowsAffected = jdbcTemplate.update(sql, filmId, userId);
             if (rowsAffected == 0) {
                 log.warn("Лайк не найден: filmId={}, userId={}", filmId, userId);
-                throw new IllegalArgumentException("Лайк для фильма с ID " + filmId + " и пользователя с ID " + userId + " не найден.");
+                throw new IllegalArgumentException("Лайк для фильма с ID " + filmId + " и пользователя с ID "
+                        + userId + " не найден.");
             }
             log.debug("Лайк удален: filmId={}, userId={}", filmId, userId);
         } catch (DataAccessException e) {
@@ -292,34 +468,6 @@ public class FilmDao {
         }
     }
 
-    public Film getFullFilmById(Long id) {
-        // Получение основных данных фильма
-        String sqlFilm = "SELECT * FROM films WHERE id = ?";
-        Film film = jdbcTemplate.queryForObject(sqlFilm, this::mapRowToFilm, id);
-
-        if (film == null) {
-            throw new IllegalArgumentException("Фильм с ID " + id + " не существует.");
-        }
-
-        // Получение данных рейтинга (MPA)
-        String sqlRating = "SELECT r.id, r.name FROM ratings r WHERE r.id = ?";
-        Optional<Rating> mpa = jdbcTemplate.query(sqlRating, this::mapRowToRating, film.getRatingId())
-                .stream()
-                .findFirst();
-
-        // Установка MPA в объект фильма
-        mpa.ifPresent(film::setMpa);
-
-        // Получение данных жанров
-        String sqlGenres = "SELECT g.id, g.name FROM genres g JOIN film_genres fg ON g.id = fg.genre_id WHERE fg.film_id = ?";
-        List<Genre> genres = jdbcTemplate.query(sqlGenres, this::mapRowToGenre, id);
-
-        // Установка жанров в объект фильма
-        film.setGenres(genres);
-
-        return film;
-    }
-
     public Optional<Rating> getRatingByFilmId(Long filmId) {
         String sql = "SELECT r.id, r.name FROM ratings r WHERE r.id = (SELECT rating_id FROM films WHERE id = ?)";
         try {
@@ -336,7 +484,15 @@ public class FilmDao {
         film.setDescription(rs.getString("description"));
         film.setReleaseDate(rs.getDate("release_date").toLocalDate());
         film.setDuration(rs.getLong("duration"));
-        film.setRatingId(rs.getLong("rating_id"));
+
+        // Создаем объект Rating и устанавливаем его
+        Long ratingId = rs.getLong("rating_id");
+        if (!rs.wasNull()) {
+            Rating rating = new Rating();
+            rating.setId(ratingId);
+            film.setMpa(rating);
+        }
+
         return film;
     }
 
