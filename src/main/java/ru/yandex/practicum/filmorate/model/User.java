@@ -26,6 +26,7 @@ public class User {
     )
     private String login;
 
+    @NotBlank(groups = {OnCreate.class, OnUpdate.class}, message = "Имя не может быть пустым.")
     private String name;
 
     @NotNull(groups = OnCreate.class, message = "Дата рождения не может быть null")
